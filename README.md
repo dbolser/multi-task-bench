@@ -80,6 +80,12 @@ of the run. Scores:
 - **accuracy by staleness** — accuracy bucketed by how many events have passed
   since that task last raised; this is the interference curve, and it's where
   multi-tasking ability actually shows up
+- **accuracy by context size** — accuracy bucketed by how large the
+  conversation was (estimated tokens) when each question was asked: which
+  models get confused earlier or later as history grows
+- **format diagnostics** — `format_failure_rate` (unparseable replies, scored
+  wrong but broken out) and a content-match count for replies that contained
+  the right answer in the wrong format
 
 ## Usage
 
@@ -107,6 +113,15 @@ mtb models --filter claude               # check current OpenRouter model ids
 
 `models.txt` holds the default model list — verify the slugs against
 `mtb models` before a big run, as OpenRouter ids change over time.
+
+## Results site
+
+`docs/` is a static GitHub Pages site (enable Pages → deploy from branch →
+`main` / `docs`). Regenerate its data after a sweep with:
+
+```bash
+python scripts/make_site_data.py results-hard > docs/data.js
+```
 
 ## Roadmap (not in v1)
 

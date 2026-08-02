@@ -155,6 +155,7 @@ def run_episode(episode: Episode, agent, batch_size: int = 1,
             context_tokens += estimate_tokens(reply)
             for ev, got in zip(batch, parse_reply(reply, batch)):
                 rec = ev.to_dict()
+                rec["context_tokens"] = context_tokens
                 rec["got"] = got
                 rec["correct"] = got == ev.expected
                 # Unparseable reply that nonetheless contains the expected

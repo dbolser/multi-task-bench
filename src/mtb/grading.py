@@ -10,7 +10,15 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-STALENESS_BUCKETS = ((0, 1), (2, 3), (4, 7), (8, 15), (16, 10 ** 9))
+STALENESS_BUCKETS = ((0, 1), (2, 3), (4, 7), (8, 15), (16, 31), (32, 10 ** 9))
+CONTEXT_BUCKETS = ((0, 2000), (2000, 4000), (4000, 8000), (8000, 16000),
+                   (16000, 32000), (32000, 10 ** 9))
+
+
+def _bucket_label(lo: int, hi: int, kilo: bool = False) -> str:
+    if hi >= 10 ** 9:
+        return f"{lo // 1000}k+" if kilo else f"{lo}+"
+    return f"{lo // 1000}-{hi // 1000}k" if kilo else f"{lo}-{hi}"
 
 
 def _staleness(records: list[dict]) -> list[int]:
@@ -33,7 +41,8 @@ def summarize_run(run: dict) -> dict:
             "episode_id": run["episode_id"], "agent": run["agent"],
             "config": run["config"], "n_events": 0, "accuracy": None,
             "task_completion_rate": None, "mean_first_error_depth": None,
-            "accuracy_by_staleness": {}, "truncated": run.get("truncated", False),
+            "accuracy_by_staleness": {}, "accuracy_by_context": {},
+            "truncated": run.get("truncated", False),
             "error": run.get("error"),
         }
 
@@ -57,12 +66,23 @@ def summarize_run(run: dict) -> dict:
             first_error_depths.append(len(recs))  # survived the whole task
 
     staleness = _staleness(records)
-    by_bucket: dict[str, list[bool]] = defaultdict(list)
+    by_stale: dict[str, list[bool]] = defaultdict(list)
     for r, s in zip(records, staleness):
         for lo, hi in STALENESS_BUCKETS:
             if lo <= s <= hi:
-                label = f"{lo}-{hi}" if hi < 10 ** 9 else f"{lo}+"
-                by_bucket[label].append(r["correct"])
+                by_stale[_bucket_label(lo, hi)].append(r["correct"])
+                break
+
+    # accuracy vs. how much conversation has accumulated: the
+    # "confused earlier or later as history grows" curve
+    by_ctx: dict[str, list[bool]] = defaultdict(list)
+    for r in records:
+        ctx = r.get("context_tokens")
+        if ctx is None:
+            continue
+        for lo, hi in CONTEXT_BUCKETS:
+            if lo <= ctx < hi:
+                by_ctx[_bucket_label(lo, hi, kilo=True)].append(r["correct"])
                 break
 
     return {
@@ -80,7 +100,12 @@ def summarize_run(run: dict) -> dict:
         "task_completion_rate": perfect_tasks / len(by_task),
         "mean_first_error_depth": sum(first_error_depths) / len(first_error_depths),
         "accuracy_by_staleness": {
-            k: sum(v) / len(v) for k, v in sorted(by_bucket.items())
+            k: {"acc": sum(v) / len(v), "n": len(v)}
+            for k, v in sorted(by_stale.items())
+        },
+        "accuracy_by_context": {
+            k: {"acc": sum(v) / len(v), "n": len(v)}
+            for k, v in sorted(by_ctx.items())
         },
         "truncated": run.get("truncated", False),
         "error": run.get("error"),
