@@ -20,6 +20,7 @@ from .episode import DONE, Episode, Event, batch_events, estimate_tokens, render
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 ANSWER_RE = re.compile(r"\b(T\d+)\b\W{0,3}(S\d{1,3}|DONE)\b", re.IGNORECASE)
+BARE_RE = re.compile(r"\b(S\d{1,3}|DONE)\b", re.IGNORECASE)
 
 
 @dataclass
@@ -104,9 +105,14 @@ class OpenRouterAgent:
 def parse_reply(reply: str, batch: list[Event]) -> list[str | None]:
     """Extract one answer per event, in order. Pairs found in the reply are
     consumed greedily: for each event, take the first unused pair whose task
-    matches. Returns None where no answer was found."""
+    matches. If the reply contains no `<task> <step>` pairs at all, fall back
+    to bare step ids assigned to the events in order. Returns None where no
+    answer was found."""
     pairs = [(m.group(1).upper(), m.group(2).upper())
              for m in ANSWER_RE.finditer(reply)]
+    if not pairs:
+        bare = [m.group(1).upper() for m in BARE_RE.finditer(reply)]
+        return [bare[i] if i < len(bare) else None for i in range(len(batch))]
     used = [False] * len(pairs)
     answers: list[str | None] = []
     for ev in batch:
@@ -144,6 +150,11 @@ def run_episode(episode: Episode, agent, batch_size: int = 1,
                 rec = ev.to_dict()
                 rec["got"] = got
                 rec["correct"] = got == ev.expected
+                # Unparseable reply that nonetheless contains the expected
+                # answer: likely correct-but-misformatted. Scored wrong, but
+                # surfaced separately by the grader.
+                rec["content_match"] = (
+                    got is None and ev.expected in reply.upper())
                 records.append(rec)
     except Exception as exc:  # noqa: BLE001 - recorded, not swallowed silently
         error = f"{type(exc).__name__}: {exc}"

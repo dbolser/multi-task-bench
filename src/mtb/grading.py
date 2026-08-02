@@ -38,6 +38,9 @@ def summarize_run(run: dict) -> dict:
         }
 
     correct = sum(r["correct"] for r in records)
+    unparsed = sum(1 for r in records if r["got"] is None)
+    content_match = sum(1 for r in records if r.get("content_match"))
+    answered = n - unparsed
 
     # Per-task: fully correct tasks, and depth of first error.
     by_task: dict[str, list[dict]] = defaultdict(list)
@@ -68,6 +71,12 @@ def summarize_run(run: dict) -> dict:
         "config": run["config"],
         "n_events": n,
         "accuracy": correct / n,
+        # format diagnostics: unparseable replies score 0 in `accuracy`, but
+        # are broken out here so a format problem isn't mistaken for a
+        # tracking problem
+        "format_failure_rate": unparsed / n,
+        "misformatted_but_content_match": content_match,
+        "accuracy_answered": correct / answered if answered else None,
         "task_completion_rate": perfect_tasks / len(by_task),
         "mean_first_error_depth": sum(first_error_depths) / len(first_error_depths),
         "accuracy_by_staleness": {
@@ -102,6 +111,8 @@ def aggregate(summaries: list[dict]) -> list[dict]:
                 sum(x["task_completion_rate"] for x in ss) / len(ss)),
             "mean_first_error_depth": (
                 sum(x["mean_first_error_depth"] for x in ss) / len(ss)),
+            "format_failure_rate": (
+                sum(x.get("format_failure_rate", 0) for x in ss) / len(ss)),
         })
     return rows
 
@@ -110,7 +121,7 @@ def format_table(rows: list[dict]) -> str:
     if not rows:
         return "(no results)"
     hdr = ["agent", "n_tasks", "schedule", "branched", "runs",
-           "accuracy", "task_done", "1st_err_depth"]
+           "accuracy", "task_done", "1st_err_depth", "fmt_fail"]
     lines = [" | ".join(hdr), " | ".join("---" for _ in hdr)]
     for r in rows:
         lines.append(" | ".join([
@@ -118,5 +129,6 @@ def format_table(rows: list[dict]) -> str:
             str(r["runs"]), f"{r['accuracy']:.3f}",
             f"{r['task_completion_rate']:.3f}",
             f"{r['mean_first_error_depth']:.1f}",
+            f"{r['format_failure_rate']:.3f}",
         ]))
     return "\n".join(lines)

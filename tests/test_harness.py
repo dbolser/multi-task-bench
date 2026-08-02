@@ -36,6 +36,9 @@ def test_parse_reply_formats():
     assert parse_reply(f"T1: {exp[0]}, then T2: {exp[1]}", batch) == exp
     assert parse_reply(f"t2 {exp[1]} and t1 {exp[0]}", batch) == exp
     assert parse_reply("no answer here", batch) == [None, None]
+    # bare step ids (no task prefix) are accepted in event order
+    assert parse_reply(exp[0], batch[:1]) == [exp[0]]
+    assert parse_reply(f"{exp[0]}\n{exp[1]}", batch) == exp
     # duplicate task in a batch consumes pairs in order
     twice = [e for e in ep.events if e.task == "T1"][:2]
     ans = parse_reply(f"T1 {twice[0].expected}\nT1 {twice[1].expected}", twice)

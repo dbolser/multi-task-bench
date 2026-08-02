@@ -33,7 +33,23 @@ If the completed step was the task's final step, reply:
 
   <task id> {done}
 
-Do not include any other text in your replies.
+Reply only about the task(s) mentioned in the current message — do not include
+lines for other tasks. Do not include any other text in your replies.
+
+=== WORKED EXAMPLE (task "TX" is an example, not one of your tasks) ===
+
+TX — Example: "Make a cup of tea"
+  S01: Boil the kettle. Then go to S02.
+  S02: Check the filter. If the result is "clean", go to S03; if "clogged", go to S04.
+  S03: Brew the tea. (final step)
+  S04: Rinse the filter. Then go to S03.
+
+Events and the correct replies:
+  "TX: start."                          -> your reply: TX S01
+  "TX: step S01 done."                  -> your reply: TX S02
+  "TX: step S02 done. Result: clogged." -> your reply: TX S04
+  "TX: step S04 done."                  -> your reply: TX S03
+  "TX: step S03 done."                  -> your reply: TX {done}
 
 === TASK INSTRUCTIONS ===
 
