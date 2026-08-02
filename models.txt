@@ -1,0 +1,11 @@
+# Default OpenRouter model set — verify slugs with `mtb models` before a run.
+anthropic/claude-sonnet-4.5
+anthropic/claude-3.5-haiku
+openai/gpt-4o
+openai/gpt-4o-mini
+google/gemini-2.5-flash
+google/gemini-2.5-pro
+meta-llama/llama-3.3-70b-instruct
+qwen/qwen-2.5-72b-instruct
+deepseek/deepseek-chat
+mistralai/mistral-large
