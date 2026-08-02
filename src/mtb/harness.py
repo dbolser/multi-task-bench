@@ -86,8 +86,15 @@ class OpenRouterAgent:
         }
         delay = 2.0
         for attempt in range(self.max_retries):
-            resp = requests.post(OPENROUTER_URL, json=payload, headers=headers,
-                                 timeout=120)
+            try:
+                resp = requests.post(OPENROUTER_URL, json=payload,
+                                     headers=headers, timeout=120)
+            except requests.RequestException:
+                if attempt < self.max_retries - 1:
+                    time.sleep(delay)
+                    delay *= 2
+                    continue
+                raise
             if resp.status_code == 200:
                 body = resp.json()
                 if "choices" in body and body["choices"]:
