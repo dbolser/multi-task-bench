@@ -12,13 +12,12 @@ def _episode(**kw):
 
 def test_oracle_scores_perfectly():
     ep = _episode()
-    for batch_size in (1, 4):
-        res = run_episode(ep, OracleAgent(), batch_size=batch_size)
-        assert len(res.records) == len(ep.events)
-        assert all(r["correct"] for r in res.records)
-        s = summarize_run(res.to_dict())
-        assert s["accuracy"] == 1.0
-        assert s["task_completion_rate"] == 1.0
+    res = run_episode(ep, OracleAgent())
+    assert len(res.records) == len(ep.events)
+    assert all(r["correct"] for r in res.records)
+    s = summarize_run(res.to_dict())
+    assert s["accuracy"] == 1.0
+    assert s["task_completion_rate"] == 1.0
 
 
 def test_random_scores_below_oracle():

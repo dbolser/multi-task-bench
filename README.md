@@ -56,7 +56,11 @@ category or across several, few long tasks or many short ones, any schedule.
 ### Harness
 
 The harness replays the event stream to the model as a growing chat
-conversation, one batch of events per turn (`--batch-size`, default 1). It is
+conversation, strictly one event per turn. (Batching several events into one
+turn was tried and removed: it mostly measures whether a model can chain
+multiple steps of the same task inside a single reply, which confounds the
+tracking signal — and since a batch's contents come from the teacher either
+way, single-stepping shows the model the same information.) The harness is
 **teacher-forced**: whatever the model answers, the episode advances along the
 ground-truth path. A context budget (`--max-context-tokens`) stops an episode
 before it would overflow the model's window; truncated runs are flagged.

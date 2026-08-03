@@ -15,7 +15,7 @@ from dataclasses import dataclass
 
 import requests
 
-from .episode import DONE, Episode, Event, batch_events, estimate_tokens, render_batch
+from .episode import DONE, Episode, Event, estimate_tokens
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
@@ -133,9 +133,12 @@ def parse_reply(reply: str, batch: list[Event]) -> list[str | None]:
     return answers
 
 
-def run_episode(episode: Episode, agent, batch_size: int = 1,
+def run_episode(episode: Episode, agent,
                 max_context_tokens: int = 120_000,
                 save_transcript: bool = True) -> RunResult:
+    """One event per turn, always: a batch of raises would have to come either
+    from the teacher or from the model's own memory, and either way the model
+    sees the same information — so single-stepping is the only clean protocol."""
     messages: list[dict] = [{"role": "user", "content": episode.preamble}]
     records: list[dict] = []
     truncated = False
@@ -143,27 +146,27 @@ def run_episode(episode: Episode, agent, batch_size: int = 1,
 
     context_tokens = estimate_tokens(episode.preamble)
     try:
-        for batch in batch_events(episode.events, batch_size):
-            user_msg = render_batch(batch)
+        for ev in episode.events:
+            user_msg = ev.prompt_line()
             context_tokens += estimate_tokens(user_msg)
             if context_tokens > max_context_tokens:
                 truncated = True
                 break
             messages.append({"role": "user", "content": user_msg})
-            reply = agent.reply(messages, batch)
+            reply = agent.reply(messages, [ev])
             messages.append({"role": "assistant", "content": reply})
             context_tokens += estimate_tokens(reply)
-            for ev, got in zip(batch, parse_reply(reply, batch)):
-                rec = ev.to_dict()
-                rec["context_tokens"] = context_tokens
-                rec["got"] = got
-                rec["correct"] = got == ev.expected
-                # Unparseable reply that nonetheless contains the expected
-                # answer: likely correct-but-misformatted. Scored wrong, but
-                # surfaced separately by the grader.
-                rec["content_match"] = (
-                    got is None and ev.expected in reply.upper())
-                records.append(rec)
+            got = parse_reply(reply, [ev])[0]
+            rec = ev.to_dict()
+            rec["context_tokens"] = context_tokens
+            rec["got"] = got
+            rec["correct"] = got == ev.expected
+            # Unparseable reply that nonetheless contains the expected
+            # answer: likely correct-but-misformatted. Scored wrong, but
+            # surfaced separately by the grader.
+            rec["content_match"] = (
+                got is None and ev.expected in reply.upper())
+            records.append(rec)
     except Exception as exc:  # noqa: BLE001 - recorded, not swallowed silently
         error = f"{type(exc).__name__}: {exc}"
 

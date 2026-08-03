@@ -17,15 +17,13 @@ PREAMBLE = """\
 You are being tested on your ability to track many procedures at the same time.
 
 Below are the full instructions for {n_tasks} tasks. The tasks will be worked on
-in an interleaved order that you cannot predict. Events will arrive one batch at
-a time. Each event tells you either that a task is starting, or that a step of a
-task was just completed (including the result, when the step was a check with
-two possible results).
+in an interleaved order that you cannot predict. Each message reports one event:
+either a task is starting, or a step of a task was just completed (including the
+result, when the step was a check with two possible results).
 
-For every event you must reply with the step that should be performed NEXT for
+After every event you must reply with the step that should be performed NEXT for
 that task, following that task's instructions and everything you have been told
-so far. Reply with one line per event, in the same order as the events, using
-exactly this format:
+so far. Reply with a single line, using exactly this format:
 
   <task id> <step id>
 
@@ -33,8 +31,8 @@ If the completed step was the task's final step, reply:
 
   <task id> {done}
 
-Reply only about the task(s) mentioned in the current message — do not include
-lines for other tasks. Do not include any other text in your replies.
+Reply only about the task mentioned in the current message. Do not include any
+other text in your replies.
 
 === WORKED EXAMPLE (task "TX" is an example, not one of your tasks) ===
 
@@ -209,11 +207,3 @@ def build_episode(
                    preamble=preamble)
 
 
-def batch_events(events: list[Event], batch_size: int) -> list[list[Event]]:
-    return [events[i:i + batch_size] for i in range(0, len(events), batch_size)]
-
-
-def render_batch(batch: list[Event]) -> str:
-    lines = [ev.prompt_line() for ev in batch]
-    lines.append("Next step for each of the above, one line each:")
-    return "\n".join(lines)

@@ -94,7 +94,7 @@ def cmd_run(args) -> None:
                 continue
             agent = _make_agent(agent_name, ep, args.api_key)
             result = run_episode(
-                ep, agent, batch_size=args.batch_size,
+                ep, agent,
                 max_context_tokens=args.max_context_tokens,
                 save_transcript=not args.no_transcript,
             )
@@ -158,7 +158,6 @@ def main(argv: list[str] | None = None) -> None:
     r.add_argument("--out", default="results")
     r.add_argument("--agents", default="oracle",
                    help="comma-separated: oracle, random, or OpenRouter model ids")
-    r.add_argument("--batch-size", type=int, default=1)
     r.add_argument("--max-context-tokens", type=int, default=120_000)
     r.add_argument("--api-key", help="OpenRouter key (else $OPENROUTER_API_KEY)")
     r.add_argument("--no-transcript", action="store_true")
