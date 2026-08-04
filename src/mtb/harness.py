@@ -99,7 +99,16 @@ class OpenRouterAgent:
                 body = resp.json()
                 if "choices" in body and body["choices"]:
                     return body["choices"][0]["message"]["content"] or ""
-                raise RuntimeError(f"OpenRouter error: {body.get('error', body)}")
+                # OpenRouter reports some upstream failures as an error object
+                # inside an HTTP 200; transient codes are retryable
+                err = body.get("error", {})
+                if (isinstance(err, dict) and err.get("code") in
+                        (408, 429, 500, 502, 503, 504)
+                        and attempt < self.max_retries - 1):
+                    time.sleep(delay)
+                    delay *= 2
+                    continue
+                raise RuntimeError(f"OpenRouter error: {err or body}")
             if resp.status_code in (429, 500, 502, 503) and attempt < self.max_retries - 1:
                 time.sleep(delay)
                 delay *= 2
