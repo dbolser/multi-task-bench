@@ -64,7 +64,7 @@ class RandomAgent:
 
 class OpenRouterAgent:
     def __init__(self, model: str, api_key: str | None = None,
-                 temperature: float = 0.0, max_retries: int = 5):
+                 temperature: float = 0.0, max_retries: int = 9):
         self.name = model
         self.model = model
         self.api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
@@ -92,7 +92,7 @@ class OpenRouterAgent:
             except requests.RequestException:
                 if attempt < self.max_retries - 1:
                     time.sleep(delay)
-                    delay *= 2
+                    delay = min(delay * 2, 60.0)
                     continue
                 raise
             if resp.status_code == 200:
@@ -106,12 +106,12 @@ class OpenRouterAgent:
                         (408, 429, 500, 502, 503, 504)
                         and attempt < self.max_retries - 1):
                     time.sleep(delay)
-                    delay *= 2
+                    delay = min(delay * 2, 60.0)
                     continue
                 raise RuntimeError(f"OpenRouter error: {err or body}")
             if resp.status_code in (429, 500, 502, 503) and attempt < self.max_retries - 1:
                 time.sleep(delay)
-                delay *= 2
+                delay = min(delay * 2, 60.0)
                 continue
             raise RuntimeError(
                 f"OpenRouter HTTP {resp.status_code}: {resp.text[:500]}")
