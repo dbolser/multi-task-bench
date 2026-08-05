@@ -1,0 +1,8 @@
+{
+  "categories": [["recipes", "repair", "pipeline", "journey", "assembly"]],
+  "n_tasks": [30, 60, 100],
+  "steps_mean": [8],
+  "branch_prob": [0.25],
+  "schedule": ["uniform"],
+  "seed": [1]
+}
