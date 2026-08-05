@@ -1,5 +1,5 @@
 window.MTB_DATA = {
- "commit": "29fbc93",
+ "commit": "31cfbf9",
  "runs": [
   {
    "episode_id": "assembly+journey+pipeline+recipes+repair-n10-m24-b25-uniform-s1",
@@ -2204,6 +2204,374 @@ window.MTB_DATA = {
     "16-32k": {
      "acc": 0.7803030303030303,
      "n": 924
+    }
+   },
+   "truncated": false,
+   "error": null
+  },
+  {
+   "episode_id": "assembly+journey+pipeline+recipes+repair-n100-m8-b25-uniform-s1",
+   "agent": "meta-llama/llama-3.1-8b-instruct",
+   "config": {
+    "categories": [
+     "recipes",
+     "repair",
+     "pipeline",
+     "journey",
+     "assembly"
+    ],
+    "n_tasks": 100,
+    "steps_mean": 8,
+    "branch_prob": 0.25,
+    "schedule": "uniform",
+    "seed": 1,
+    "zipf_s": 1.2
+   },
+   "n_events": 976,
+   "accuracy": 0.8206967213114754,
+   "format_failure_rate": 0.0,
+   "misformatted_but_content_match": 0,
+   "accuracy_answered": 0.8206967213114754,
+   "task_completion_rate": 0.01,
+   "mean_first_error_depth": 6.47,
+   "accuracy_by_staleness": {
+    "0-1": {
+     "acc": 0.9823008849557522,
+     "n": 113
+    },
+    "16-31": {
+     "acc": 0.7976878612716763,
+     "n": 173
+    },
+    "2-3": {
+     "acc": 0.7428571428571429,
+     "n": 35
+    },
+    "32+": {
+     "acc": 0.8140900195694716,
+     "n": 511
+    },
+    "4-7": {
+     "acc": 0.7555555555555555,
+     "n": 45
+    },
+    "8-15": {
+     "acc": 0.7676767676767676,
+     "n": 99
+    }
+   },
+   "accuracy_by_context": {
+    "16-32k": {
+     "acc": 0.7824427480916031,
+     "n": 786
+    },
+    "8-16k": {
+     "acc": 0.9789473684210527,
+     "n": 190
+    }
+   },
+   "truncated": false,
+   "error": null
+  },
+  {
+   "episode_id": "assembly+journey+pipeline+recipes+repair-n30-m8-b25-uniform-s1",
+   "agent": "meta-llama/llama-3.1-8b-instruct",
+   "config": {
+    "categories": [
+     "recipes",
+     "repair",
+     "pipeline",
+     "journey",
+     "assembly"
+    ],
+    "n_tasks": 30,
+    "steps_mean": 8,
+    "branch_prob": 0.25,
+    "schedule": "uniform",
+    "seed": 1,
+    "zipf_s": 1.2
+   },
+   "n_events": 284,
+   "accuracy": 0.8626760563380281,
+   "format_failure_rate": 0.0,
+   "misformatted_but_content_match": 0,
+   "accuracy_answered": 0.8626760563380281,
+   "task_completion_rate": 0.03333333333333333,
+   "mean_first_error_depth": 7.366666666666666,
+   "accuracy_by_staleness": {
+    "0-1": {
+     "acc": 0.975609756097561,
+     "n": 41
+    },
+    "16-31": {
+     "acc": 0.8709677419354839,
+     "n": 62
+    },
+    "2-3": {
+     "acc": 0.6956521739130435,
+     "n": 23
+    },
+    "32+": {
+     "acc": 0.8823529411764706,
+     "n": 68
+    },
+    "4-7": {
+     "acc": 0.8292682926829268,
+     "n": 41
+    },
+    "8-15": {
+     "acc": 0.8367346938775511,
+     "n": 49
+    }
+   },
+   "accuracy_by_context": {
+    "4-8k": {
+     "acc": 0.8626760563380281,
+     "n": 284
+    }
+   },
+   "truncated": false,
+   "error": null
+  },
+  {
+   "episode_id": "assembly+journey+pipeline+recipes+repair-n60-m8-b25-uniform-s1",
+   "agent": "meta-llama/llama-3.1-8b-instruct",
+   "config": {
+    "categories": [
+     "recipes",
+     "repair",
+     "pipeline",
+     "journey",
+     "assembly"
+    ],
+    "n_tasks": 60,
+    "steps_mean": 8,
+    "branch_prob": 0.25,
+    "schedule": "uniform",
+    "seed": 1,
+    "zipf_s": 1.2
+   },
+   "n_events": 568,
+   "accuracy": 0.8133802816901409,
+   "format_failure_rate": 0.0,
+   "misformatted_but_content_match": 0,
+   "accuracy_answered": 0.8133802816901409,
+   "task_completion_rate": 0.0,
+   "mean_first_error_depth": 6.3,
+   "accuracy_by_staleness": {
+    "0-1": {
+     "acc": 0.8518518518518519,
+     "n": 81
+    },
+    "16-31": {
+     "acc": 0.8260869565217391,
+     "n": 115
+    },
+    "2-3": {
+     "acc": 0.75,
+     "n": 20
+    },
+    "32+": {
+     "acc": 0.8608695652173913,
+     "n": 230
+    },
+    "4-7": {
+     "acc": 0.7,
+     "n": 50
+    },
+    "8-15": {
+     "acc": 0.6944444444444444,
+     "n": 72
+    }
+   },
+   "accuracy_by_context": {
+    "8-16k": {
+     "acc": 0.8133802816901409,
+     "n": 568
+    }
+   },
+   "truncated": false,
+   "error": null
+  },
+  {
+   "episode_id": "assembly+journey+pipeline+recipes+repair-n100-m8-b25-uniform-s1",
+   "agent": "qwen/qwen3-30b-a3b-instruct-2507",
+   "config": {
+    "categories": [
+     "recipes",
+     "repair",
+     "pipeline",
+     "journey",
+     "assembly"
+    ],
+    "n_tasks": 100,
+    "steps_mean": 8,
+    "branch_prob": 0.25,
+    "schedule": "uniform",
+    "seed": 1,
+    "zipf_s": 1.2
+   },
+   "n_events": 976,
+   "accuracy": 0.8360655737704918,
+   "format_failure_rate": 0.0,
+   "misformatted_but_content_match": 0,
+   "accuracy_answered": 0.8360655737704918,
+   "task_completion_rate": 0.02,
+   "mean_first_error_depth": 7.08,
+   "accuracy_by_staleness": {
+    "0-1": {
+     "acc": 0.9823008849557522,
+     "n": 113
+    },
+    "16-31": {
+     "acc": 0.7687861271676301,
+     "n": 173
+    },
+    "2-3": {
+     "acc": 0.7714285714285715,
+     "n": 35
+    },
+    "32+": {
+     "acc": 0.8454011741682974,
+     "n": 511
+    },
+    "4-7": {
+     "acc": 0.8444444444444444,
+     "n": 45
+    },
+    "8-15": {
+     "acc": 0.7575757575757576,
+     "n": 99
+    }
+   },
+   "accuracy_by_context": {
+    "16-32k": {
+     "acc": 0.8015267175572519,
+     "n": 786
+    },
+    "8-16k": {
+     "acc": 0.9789473684210527,
+     "n": 190
+    }
+   },
+   "truncated": false,
+   "error": null
+  },
+  {
+   "episode_id": "assembly+journey+pipeline+recipes+repair-n30-m8-b25-uniform-s1",
+   "agent": "qwen/qwen3-30b-a3b-instruct-2507",
+   "config": {
+    "categories": [
+     "recipes",
+     "repair",
+     "pipeline",
+     "journey",
+     "assembly"
+    ],
+    "n_tasks": 30,
+    "steps_mean": 8,
+    "branch_prob": 0.25,
+    "schedule": "uniform",
+    "seed": 1,
+    "zipf_s": 1.2
+   },
+   "n_events": 284,
+   "accuracy": 0.9084507042253521,
+   "format_failure_rate": 0.0,
+   "misformatted_but_content_match": 0,
+   "accuracy_answered": 0.9084507042253521,
+   "task_completion_rate": 0.4666666666666667,
+   "mean_first_error_depth": 8.266666666666667,
+   "accuracy_by_staleness": {
+    "0-1": {
+     "acc": 0.9512195121951219,
+     "n": 41
+    },
+    "16-31": {
+     "acc": 0.9193548387096774,
+     "n": 62
+    },
+    "2-3": {
+     "acc": 0.8260869565217391,
+     "n": 23
+    },
+    "32+": {
+     "acc": 0.9411764705882353,
+     "n": 68
+    },
+    "4-7": {
+     "acc": 0.9024390243902439,
+     "n": 41
+    },
+    "8-15": {
+     "acc": 0.8571428571428571,
+     "n": 49
+    }
+   },
+   "accuracy_by_context": {
+    "4-8k": {
+     "acc": 0.9084507042253521,
+     "n": 284
+    }
+   },
+   "truncated": false,
+   "error": null
+  },
+  {
+   "episode_id": "assembly+journey+pipeline+recipes+repair-n60-m8-b25-uniform-s1",
+   "agent": "qwen/qwen3-30b-a3b-instruct-2507",
+   "config": {
+    "categories": [
+     "recipes",
+     "repair",
+     "pipeline",
+     "journey",
+     "assembly"
+    ],
+    "n_tasks": 60,
+    "steps_mean": 8,
+    "branch_prob": 0.25,
+    "schedule": "uniform",
+    "seed": 1,
+    "zipf_s": 1.2
+   },
+   "n_events": 568,
+   "accuracy": 0.8767605633802817,
+   "format_failure_rate": 0.0,
+   "misformatted_but_content_match": 0,
+   "accuracy_answered": 0.8767605633802817,
+   "task_completion_rate": 0.0,
+   "mean_first_error_depth": 7.85,
+   "accuracy_by_staleness": {
+    "0-1": {
+     "acc": 0.8765432098765432,
+     "n": 81
+    },
+    "16-31": {
+     "acc": 0.8956521739130435,
+     "n": 115
+    },
+    "2-3": {
+     "acc": 0.8,
+     "n": 20
+    },
+    "32+": {
+     "acc": 0.9304347826086956,
+     "n": 230
+    },
+    "4-7": {
+     "acc": 0.8,
+     "n": 50
+    },
+    "8-15": {
+     "acc": 0.75,
+     "n": 72
+    }
+   },
+   "accuracy_by_context": {
+    "8-16k": {
+     "acc": 0.8767605633802817,
+     "n": 568
     }
    },
    "truncated": false,
