@@ -15,10 +15,11 @@ import json
 import sys
 from pathlib import Path
 
+from .batch import export_batch, import_batch, load_episodes
 from .categories import CATEGORIES
 from .episode import SCHEDULES, Episode, build_episode, estimate_tokens
 from .grading import aggregate, format_table, summarize_run
-from .harness import OpenRouterAgent, OracleAgent, RandomAgent, run_episode
+from .harness import ChatCompletionsAgent, OracleAgent, RandomAgent, run_episode
 
 
 def _episode_configs(args) -> list[dict]:
@@ -68,12 +69,13 @@ def cmd_preview(args) -> None:
         print(f"... {len(ep.events) - args.n_events} more events")
 
 
-def _make_agent(name: str, episode: Episode, api_key: str | None):
+def _make_agent(name: str, episode: Episode, api_key: str | None,
+                base_url: str | None):
     if name == "oracle":
         return OracleAgent()
     if name == "random":
         return RandomAgent(episode, seed=episode.config["seed"])
-    return OpenRouterAgent(name, api_key=api_key)
+    return ChatCompletionsAgent(name, api_key=api_key, base_url=base_url)
 
 
 def cmd_run(args) -> None:
@@ -92,11 +94,12 @@ def cmd_run(args) -> None:
             if res_path.exists() and not args.force:
                 print(f"skip (exists): {res_path}")
                 continue
-            agent = _make_agent(agent_name, ep, args.api_key)
+            agent = _make_agent(agent_name, ep, args.api_key, args.base_url)
             result = run_episode(
                 ep, agent,
                 max_context_tokens=args.max_context_tokens,
                 save_transcript=not args.no_transcript,
+                history=args.history,
             )
             res_path.write_text(json.dumps(result.to_dict(), indent=1))
             s = summarize_run(result.to_dict())
@@ -118,6 +121,30 @@ def cmd_grade(args) -> None:
         Path(args.json_out).write_text(json.dumps(
             {"runs": summaries, "aggregate": rows}, indent=1))
         print(f"\nwrote {args.json_out}")
+
+
+def cmd_export_batch(args) -> None:
+    eps = load_episodes(args.episodes)
+    lines, est = export_batch(eps, args.model)
+    Path(args.out).write_text("\n".join(lines) + "\n")
+    print(f"wrote {args.out}: {len(lines)} requests over {len(eps)} episodes, "
+          f"~{est / 1e6:.1f}M prompt tokens")
+
+
+def cmd_import_batch(args) -> None:
+    eps = load_episodes(args.episodes)
+    response_lines = Path(args.responses).read_text().splitlines()
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    slug = args.model.replace("/", "_").replace(":", "_")
+    for result in import_batch(eps, response_lines, args.model):
+        res_path = out / f"{slug}__{result.episode_id}.json"
+        res_path.write_text(json.dumps(result.to_dict(), indent=1))
+        s = summarize_run(result.to_dict())
+        acc = "n/a" if s["accuracy"] is None else f"{s['accuracy']:.3f}"
+        note = f" [{result.error}]" if result.error else ""
+        print(f"{args.model} on {result.episode_id}: acc={acc} "
+              f"({s['n_events']} events){note} -> {res_path}")
 
 
 def cmd_models(args) -> None:
@@ -159,7 +186,14 @@ def main(argv: list[str] | None = None) -> None:
     r.add_argument("--agents", default="oracle",
                    help="comma-separated: oracle, random, or OpenRouter model ids")
     r.add_argument("--max-context-tokens", type=int, default=120_000)
-    r.add_argument("--api-key", help="OpenRouter key (else $OPENROUTER_API_KEY)")
+    r.add_argument("--history", choices=("full", "corrected"), default="full",
+                   help="corrected: stored assistant turns are ground truth")
+    r.add_argument("--base-url",
+                   help="any OpenAI-compatible endpoint, e.g. a vLLM server "
+                        "(default: OpenRouter)")
+    r.add_argument("--api-key", help="API key (else $OPENROUTER_API_KEY / "
+                                     "$OPENAI_API_KEY; optional for local "
+                                     "endpoints)")
     r.add_argument("--no-transcript", action="store_true")
     r.add_argument("--force", action="store_true", help="overwrite existing results")
     r.set_defaults(func=cmd_run)
@@ -172,6 +206,23 @@ def main(argv: list[str] | None = None) -> None:
     m = sub.add_parser("models", help="list OpenRouter models")
     m.add_argument("--filter")
     m.set_defaults(func=cmd_models)
+
+    e = sub.add_parser("export-batch",
+                       help="write OpenAI-batch-format requests "
+                            "(corrected-history contexts) for offline runs")
+    e.add_argument("--episodes", default="episodes")
+    e.add_argument("--model", required=True)
+    e.add_argument("--out", required=True)
+    e.set_defaults(func=cmd_export_batch)
+
+    i = sub.add_parser("import-batch",
+                       help="grade a batch API's output JSONL into result files")
+    i.add_argument("--episodes", default="episodes")
+    i.add_argument("--responses", required=True)
+    i.add_argument("--model", required=True,
+                   help="agent name to record in the results")
+    i.add_argument("--out", default="results")
+    i.set_defaults(func=cmd_import_batch)
 
     args = p.parse_args(argv)
     args.func(args)

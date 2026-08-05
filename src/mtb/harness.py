@@ -62,13 +62,20 @@ class RandomAgent:
         )
 
 
-class OpenRouterAgent:
+class ChatCompletionsAgent:
+    """Any OpenAI-compatible /chat/completions endpoint: OpenRouter (default),
+    a self-hosted vLLM server, or a provider's own API via base_url."""
+
     def __init__(self, model: str, api_key: str | None = None,
+                 base_url: str | None = None,
                  temperature: float = 0.0, max_retries: int = 9):
         self.name = model
         self.model = model
-        self.api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
-        if not self.api_key:
+        self.url = (base_url.rstrip("/") + "/chat/completions"
+                    if base_url else OPENROUTER_URL)
+        self.api_key = (api_key or os.environ.get("OPENROUTER_API_KEY")
+                        or os.environ.get("OPENAI_API_KEY") or "")
+        if not self.api_key and self.url == OPENROUTER_URL:
             raise RuntimeError("Set OPENROUTER_API_KEY or pass --api-key")
         self.temperature = temperature
         self.max_retries = max_retries
@@ -80,14 +87,13 @@ class OpenRouterAgent:
             "temperature": self.temperature,
             "max_tokens": 64 + 32 * len(batch),
         }
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "X-Title": "multi-task-bench",
-        }
+        headers = {"X-Title": "multi-task-bench"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
         delay = 2.0
         for attempt in range(self.max_retries):
             try:
-                resp = requests.post(OPENROUTER_URL, json=payload,
+                resp = requests.post(self.url, json=payload,
                                      headers=headers, timeout=120)
             except requests.RequestException:
                 if attempt < self.max_retries - 1:
@@ -118,6 +124,9 @@ class OpenRouterAgent:
         raise RuntimeError("unreachable")
 
 
+OpenRouterAgent = ChatCompletionsAgent  # backwards-compatible alias
+
+
 def parse_reply(reply: str, batch: list[Event]) -> list[str | None]:
     """Extract one answer per event, in order. Pairs found in the reply are
     consumed greedily: for each event, take the first unused pair whose task
@@ -142,12 +151,25 @@ def parse_reply(reply: str, batch: list[Event]) -> list[str | None]:
     return answers
 
 
+def truth_reply(ev: Event) -> str:
+    return f"{ev.task} {ev.expected}"
+
+
 def run_episode(episode: Episode, agent,
                 max_context_tokens: int = 120_000,
-                save_transcript: bool = True) -> RunResult:
+                save_transcript: bool = True,
+                history: str = "full") -> RunResult:
     """One event per turn, always: a batch of raises would have to come either
     from the teacher or from the model's own memory, and either way the model
-    sees the same information — so single-stepping is the only clean protocol."""
+    sees the same information — so single-stepping is the only clean protocol.
+
+    history="full" keeps the model's own replies in the conversation;
+    history="corrected" replaces each stored assistant turn with the
+    ground-truth answer, so the model's errors cannot contaminate later
+    events — and every event's context is fully determined in advance
+    (which is what makes offline/batch runs possible)."""
+    if history not in ("full", "corrected"):
+        raise ValueError(f"unknown history mode: {history}")
     messages: list[dict] = [{"role": "user", "content": episode.preamble}]
     records: list[dict] = []
     truncated = False
@@ -163,8 +185,9 @@ def run_episode(episode: Episode, agent,
                 break
             messages.append({"role": "user", "content": user_msg})
             reply = agent.reply(messages, [ev])
-            messages.append({"role": "assistant", "content": reply})
-            context_tokens += estimate_tokens(reply)
+            stored = reply if history == "full" else truth_reply(ev)
+            messages.append({"role": "assistant", "content": stored})
+            context_tokens += estimate_tokens(stored)
             got = parse_reply(reply, [ev])[0]
             rec = ev.to_dict()
             rec["context_tokens"] = context_tokens
@@ -182,7 +205,7 @@ def run_episode(episode: Episode, agent,
     return RunResult(
         episode_id=episode.id,
         agent=agent.name,
-        config=episode.config,
+        config={**episode.config, "history": history},
         records=records,
         transcript=messages if save_transcript else [],
         truncated=truncated,

@@ -65,10 +65,26 @@ way, single-stepping shows the model the same information.) The harness is
 ground-truth path. A context budget (`--max-context-tokens`) stops an episode
 before it would overflow the model's window; truncated runs are flagged.
 
-Models are called through [OpenRouter](https://openrouter.ai) (set
-`OPENROUTER_API_KEY`), so one key covers many providers. Two offline agents —
-`oracle` (reads ground truth, must score 1.0) and `random` (floor baseline) —
-let you validate everything without an API key.
+Models are called through [OpenRouter](https://openrouter.ai) by default (set
+`OPENROUTER_API_KEY`), so one key covers many providers — or any
+OpenAI-compatible endpoint via `--base-url`, e.g. a self-hosted
+[vLLM](https://docs.vllm.ai) server (whose automatic prefix caching is ideal
+for this grow-by-one-turn workload). Two offline agents — `oracle` (reads
+ground truth, must score 1.0) and `random` (floor baseline) — let you validate
+everything without an API key.
+
+Two history modes: `--history full` (default) keeps the model's own replies in
+the conversation; `--history corrected` replaces each stored assistant turn
+with the ground-truth answer, so the model's errors cannot contaminate later
+events. Corrected history also makes every event's context fully determined in
+advance, which enables **offline/batch runs** at batch-API discounts:
+
+```bash
+mtb export-batch --episodes episodes/ --model gpt-4o-mini --out req.jsonl
+# submit req.jsonl to a batch API (or vLLM offline), download the output, then:
+mtb import-batch --episodes episodes/ --responses out.jsonl \
+                 --model gpt-4o-mini --out results/
+```
 
 ### Grading and partial success
 
