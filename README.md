@@ -103,6 +103,13 @@ of the run. Scores:
 - **accuracy by context size** — accuracy bucketed by how large the
   conversation was (estimated tokens) when each question was asked: which
   models get confused earlier or later as history grows
+- **errors per task** (`task_error_dist`) — how many tasks get through with
+  0 / 1 / 2 / 3+ errors; perfect end-to-end tasks turn out to be rare even at
+  ~90% per-event accuracy
+- **accuracy by event kind** (`accuracy_by_kind`) — start / advance / branch /
+  done broken out separately; cheap models fail the DONE event almost
+  universally, answering with the next sequential step id instead of
+  recognising the task is finished
 - **format diagnostics** — `format_failure_rate` (unparseable replies, scored
   wrong but broken out) and a content-match count for replies that contained
   the right answer in the wrong format

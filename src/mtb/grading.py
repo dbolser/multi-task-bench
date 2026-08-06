@@ -41,6 +41,7 @@ def summarize_run(run: dict) -> dict:
             "episode_id": run["episode_id"], "agent": run["agent"],
             "config": run["config"], "n_events": 0, "accuracy": None,
             "task_completion_rate": None, "mean_first_error_depth": None,
+            "task_error_dist": {}, "accuracy_by_kind": {},
             "accuracy_by_staleness": {}, "accuracy_by_context": {},
             "truncated": run.get("truncated", False),
             "error": run.get("error"),
@@ -64,6 +65,24 @@ def summarize_run(run: dict) -> dict:
         else:
             perfect_tasks += 1
             first_error_depths.append(len(recs))  # survived the whole task
+
+    # errors-per-task distribution: how many tasks get through clean
+    err_by_task: dict[str, int] = defaultdict(int)
+    for r in records:
+        err_by_task.setdefault(r["task"], 0)
+        if not r["correct"]:
+            err_by_task[r["task"]] += 1
+    task_error_dist = {"0": 0, "1": 0, "2": 0, "3+": 0}
+    for e in err_by_task.values():
+        task_error_dist[str(e) if e < 3 else "3+"] += 1
+
+    # accuracy by event kind: start / plain advance / branch result / done
+    by_kind: dict[str, list[bool]] = defaultdict(list)
+    for r in records:
+        kind = ("start" if r["kind"] == "start" else
+                "done" if r["expected"] == "DONE" else
+                "branch" if r["result"] is not None else "advance")
+        by_kind[kind].append(r["correct"])
 
     staleness = _staleness(records)
     by_stale: dict[str, list[bool]] = defaultdict(list)
@@ -99,6 +118,11 @@ def summarize_run(run: dict) -> dict:
         "accuracy_answered": correct / answered if answered else None,
         "task_completion_rate": perfect_tasks / len(by_task),
         "mean_first_error_depth": sum(first_error_depths) / len(first_error_depths),
+        "task_error_dist": task_error_dist,
+        "accuracy_by_kind": {
+            k: {"acc": sum(v) / len(v), "n": len(v)}
+            for k, v in by_kind.items()
+        },
         "accuracy_by_staleness": {
             k: {"acc": sum(v) / len(v), "n": len(v)}
             for k, v in sorted(by_stale.items())

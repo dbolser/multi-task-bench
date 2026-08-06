@@ -11,6 +11,7 @@
   --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
   --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,0.10);
   --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#008300;
+  --ord1:#86b6ef; --ord2:#3987e5; --ord3:#1c5cab; --ord4:#0d366b;
 }
 @media (prefers-color-scheme: dark) {
   :root {
@@ -19,6 +20,7 @@
     --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
     --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,0.10);
     --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#008300;
+    --ord1:#86b6ef; --ord2:#3987e5; --ord3:#256abf; --ord4:#184f95;
   }
 }
 * { box-sizing: border-box; }
@@ -81,6 +83,18 @@ a { color: var(--s1); }
   <p class="sub">Accuracy bucketed by how many events elapsed since the same task last advanced — the interference curve.</p>
   <div class="card"><div id="chart-stale"></div></div>
 
+  <h2>Finishing a whole task without a single slip is rare</h2>
+  <p class="sub">Errors per task, pooled over all runs. Even at ~90% per-event accuracy,
+    a 24-step task gives ~26 chances to slip — and one event type is failed
+    almost universally (see below).</p>
+  <div class="card"><div id="chart-taskerr"></div></div>
+
+  <h2>Accuracy by event type</h2>
+  <p class="sub">The same models that ace step-following collapse on the final event —
+    recognising that a task is <em>finished</em> (replying DONE) instead of
+    incrementing to the next step number.</p>
+  <div class="card"><div id="chart-kind"></div></div>
+
   <h2>All runs</h2>
   <div class="card"><div id="runs-table"></div></div>
 </main>
@@ -142,7 +156,7 @@ function lineChart(el, categories, series, yMin) {
   for (const s of series) {
     const pts = s.points.map((p, i) => p.y == null ? null : [X(i), Y(p.y)]);
     const path = pts.map((p, i) => p ? `${(i === 0 || !pts[i-1]) ? "M" : "L"}${p[0]},${p[1]}` : "").join("");
-    svg.push(`<path class="series" d="${path}" stroke="${s.color}"/>`);
+    svg.push(`<path class="series" d="${path}" stroke="${s.color}"${s.dash ? ` stroke-dasharray="${s.dash}"` : ""}/>`);
     s.points.forEach((p, i) => {
       if (p.y == null) return;
       svg.push(`<circle class="pt" data-s="${s.name}" data-i="${i}" cx="${X(i)}" cy="${Y(p.y)}" r="5" fill="${s.color}"/>`);
@@ -163,18 +177,29 @@ function lineChart(el, categories, series, yMin) {
 }
 
 // ---- chart 1: accuracy vs n_tasks (mean over schedules) ----
+// one series per (model, steps_mean) so long-task and short-task sweeps
+// are never pooled on the same point
 {
   const ns = [...new Set(RUNS.map(r => r.config.n_tasks))].sort((a, b) => a - b);
-  const series = MODELS.map(mdl => ({
-    name: mdl, color: colorOf(mdl),
-    points: ns.map(n => {
-      const rs = RUNS.filter(r => r.agent === mdl && r.config.n_tasks === n);
-      if (!rs.length) return { y: null };
-      const ev = rs.reduce((a, r) => a + r.n_events, 0);
-      const ok = rs.reduce((a, r) => a + r.accuracy * r.n_events, 0);
-      return { y: ok / ev, n: ev };
-    }),
-  }));
+  const means = [...new Set(RUNS.map(r => r.config.steps_mean))].sort((a, b) => a - b);
+  const series = [];
+  for (const mdl of MODELS)
+    for (const sm of means) {
+      const points = ns.map(n => {
+        const rs = RUNS.filter(r => r.agent === mdl &&
+          r.config.n_tasks === n && r.config.steps_mean === sm);
+        if (!rs.length) return { y: null };
+        const ev = rs.reduce((a, r) => a + r.n_events, 0);
+        const ok = rs.reduce((a, r) => a + r.accuracy * r.n_events, 0);
+        return { y: ok / ev, n: ev };
+      });
+      if (points.some(p => p.y != null))
+        series.push({
+          name: means.length > 1 ? `${mdl} (μ${sm} steps)` : mdl,
+          color: colorOf(mdl), dash: sm === means[0] ? null : "6 5",
+          points,
+        });
+    }
   lineChart(document.getElementById("chart-ntasks"), ns.map(String), series);
 }
 
@@ -199,6 +224,101 @@ bucketChart(document.getElementById("chart-context"), "accuracy_by_context",
   ["0-2k", "2-4k", "4-8k", "8-16k", "16-32k", "32k+"]);
 bucketChart(document.getElementById("chart-stale"), "accuracy_by_staleness",
   ["0-1", "2-3", "4-7", "8-15", "16-31", "32+"]);
+
+// ---- errors-per-task stacked bars ----
+{
+  const KEYS = ["0", "1", "2", "3+"];
+  const ORD = ["--ord1", "--ord2", "--ord3", "--ord4"];
+  const rows = MODELS.map(mdl => {
+    const dist = { "0": 0, "1": 0, "2": 0, "3+": 0 };
+    for (const r of RUNS.filter(r => r.agent === mdl))
+      for (const k of KEYS) dist[k] += (r.task_error_dist || {})[k] || 0;
+    return { mdl, dist, total: KEYS.reduce((a, k) => a + dist[k], 0) };
+  }).filter(r => r.total > 0);
+  const W = 900, barH = 26, gap = 14, m = { t: 6, r: 20, b: 26, l: 320 };
+  const H = m.t + rows.length * (barH + gap) + m.b;
+  const iw = W - m.l - m.r;
+  const svg = [`<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px">`];
+  [0, .25, .5, .75, 1].forEach(f => {
+    svg.push(`<line class="gridline" x1="${m.l + f * iw}" x2="${m.l + f * iw}" y1="${m.t}" y2="${H - m.b}"/>`);
+    svg.push(`<text x="${m.l + f * iw}" y="${H - 8}" text-anchor="middle">${f * 100}%</text>`);
+  });
+  rows.forEach((r, i) => {
+    const y = m.t + i * (barH + gap);
+    svg.push(`<text x="${m.l - 10}" y="${y + barH / 2 + 4}" text-anchor="end">${r.mdl}</text>`);
+    let x = m.l;
+    KEYS.forEach((k, j) => {
+      const w = r.dist[k] / r.total * iw;
+      if (w <= 0) return;
+      svg.push(`<rect x="${x + 1}" y="${y}" width="${Math.max(w - 2, 0.5)}" height="${barH}" rx="3"
+        fill="var(${ORD[j]})" data-m="${r.mdl}" data-k="${k}" data-v="${r.dist[k]}" data-t="${r.total}"/>`);
+      x += w;
+    });
+  });
+  svg.push("</svg>");
+  const el = document.getElementById("chart-taskerr");
+  el.innerHTML = svg.join("");
+  const lg = document.createElement("div");
+  lg.className = "legend";
+  lg.innerHTML = KEYS.map((k, j) =>
+    `<span><span class="chip" style="background:var(${ORD[j]})"></span>${k} error${k === "1" ? "" : "s"}</span>`).join("");
+  el.parentElement.appendChild(lg);
+  el.querySelectorAll("rect").forEach(rc => {
+    rc.addEventListener("mousemove", evt => showTip(evt,
+      `${rc.dataset.m}<br>${rc.dataset.k} errors: <b>${rc.dataset.v}</b> of ${rc.dataset.t} tasks ` +
+      `(${(100 * rc.dataset.v / rc.dataset.t).toFixed(1)}%)`));
+    rc.addEventListener("mouseleave", hideTip);
+  });
+}
+
+// ---- accuracy by event kind (dot plot) ----
+{
+  const KINDS = ["start", "advance", "branch", "done"];
+  const KCOLOR = ["--s1", "--s2", "--s3", "--s4"];
+  const rows = MODELS.map(mdl => {
+    const agg = {};
+    for (const k of KINDS) agg[k] = [0, 0];
+    for (const r of RUNS.filter(r => r.agent === mdl))
+      for (const k of KINDS) {
+        const cell = (r.accuracy_by_kind || {})[k];
+        if (cell) { agg[k][0] += cell.acc * cell.n; agg[k][1] += cell.n; }
+      }
+    return { mdl, agg };
+  }).filter(r => KINDS.some(k => r.agg[k][1] > 0));
+  const W = 900, rowH = 34, m = { t: 6, r: 20, b: 26, l: 320 };
+  const H = m.t + rows.length * rowH + m.b;
+  const iw = W - m.l - m.r;
+  const X = v => m.l + v * iw;
+  const svg = [`<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px">`];
+  [0, .25, .5, .75, 1].forEach(f => {
+    svg.push(`<line class="gridline" x1="${X(f)}" x2="${X(f)}" y1="${m.t}" y2="${H - m.b}"/>`);
+    svg.push(`<text x="${X(f)}" y="${H - 8}" text-anchor="middle">${f * 100}%</text>`);
+  });
+  rows.forEach((r, i) => {
+    const y = m.t + i * rowH + rowH / 2;
+    svg.push(`<text x="${m.l - 10}" y="${y + 4}" text-anchor="end">${r.mdl}</text>`);
+    svg.push(`<line class="axisline" x1="${X(0)}" x2="${X(1)}" y1="${y}" y2="${y}"/>`);
+    KINDS.forEach((k, j) => {
+      const [ok, n] = r.agg[k];
+      if (!n) return;
+      svg.push(`<circle class="pt" cx="${X(ok / n)}" cy="${y}" r="6" fill="var(${KCOLOR[j]})"
+        data-m="${r.mdl}" data-k="${k}" data-a="${(ok / n).toFixed(3)}" data-n="${n}"/>`);
+    });
+  });
+  svg.push("</svg>");
+  const el = document.getElementById("chart-kind");
+  el.innerHTML = svg.join("");
+  const lg = document.createElement("div");
+  lg.className = "legend";
+  lg.innerHTML = KINDS.map((k, j) =>
+    `<span><span class="chip" style="background:var(${KCOLOR[j]})"></span>${k}</span>`).join("");
+  el.parentElement.appendChild(lg);
+  el.querySelectorAll("circle").forEach(c => {
+    c.addEventListener("mousemove", evt => showTip(evt,
+      `${c.dataset.m}<br>${c.dataset.k}: <b>${c.dataset.a}</b> <span style="color:var(--muted)">(n=${c.dataset.n})</span>`));
+    c.addEventListener("mouseleave", hideTip);
+  });
+}
 
 // ---- all-runs table ----
 {
