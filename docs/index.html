@@ -89,6 +89,20 @@ a { color: var(--s1); }
     almost universally (see below).</p>
   <div class="card"><div id="chart-taskerr"></div></div>
 
+  <h2>Task length is a cliff; breadth is a slope</h2>
+  <p class="sub">Chance of completing a task with zero errors — <em>excluding the DONE
+    event</em>, so the stop-reflex failure below doesn't mask the tracking signal.
+    Left: by the task's own length (raises), pooled over all runs. A clean run
+    needs every raise right, so exposure compounds — and per-event accuracy
+    itself also drifts down on longer tasks (more branch points, longer
+    episodes).</p>
+  <div class="card"><div id="chart-cleanlen"></div></div>
+  <p class="sub" style="margin-top:16px">By breadth (concurrent tasks), split by task length
+    (solid = long tasks, dashed = short): scaling 30&nbsp;→&nbsp;100 short tasks
+    barely moves the clean rate, while lengthening tasks at fixed breadth
+    collapses it.</p>
+  <div class="card"><div id="chart-cleanbreadth"></div></div>
+
   <h2>Accuracy by event type</h2>
   <p class="sub">The same models that ace step-following collapse on the final event —
     recognising that a task is <em>finished</em> (replying DONE) instead of
@@ -269,6 +283,51 @@ bucketChart(document.getElementById("chart-stale"), "accuracy_by_staleness",
       `(${(100 * rc.dataset.v / rc.dataset.t).toFixed(1)}%)`));
     rc.addEventListener("mouseleave", hideTip);
   });
+}
+
+// ---- clean-task rate (excl DONE) vs task length ----
+{
+  const ORDER = ["2-8", "9-14", "15-22", "23-30", "31+"];
+  const buckets = ORDER.filter(b =>
+    RUNS.some(r => (r.task_length_dist || {})[b]?.tasks > 0));
+  const series = MODELS.map(mdl => ({
+    name: mdl, color: colorOf(mdl),
+    points: buckets.map(b => {
+      let clean = 0, n = 0;
+      for (const r of RUNS.filter(r => r.agent === mdl)) {
+        const cell = (r.task_length_dist || {})[b];
+        if (cell) { clean += cell.clean_x; n += cell.tasks; }
+      }
+      return n ? { y: clean / n, n } : { y: null };
+    }),
+  })).filter(s => s.points.some(p => p.y != null));
+  lineChart(document.getElementById("chart-cleanlen"), buckets, series, 0);
+}
+
+// ---- clean-task rate (excl DONE) vs breadth, split by steps_mean ----
+{
+  const ns = [...new Set(RUNS.map(r => r.config.n_tasks))].sort((a, b) => a - b);
+  const means = [...new Set(RUNS.map(r => r.config.steps_mean))].sort((a, b) => b - a);
+  const series = [];
+  for (const mdl of MODELS)
+    for (const sm of means) {
+      const points = ns.map(n => {
+        let clean = 0, total = 0;
+        for (const r of RUNS.filter(r => r.agent === mdl &&
+            r.config.n_tasks === n && r.config.steps_mean === sm)) {
+          clean += r.tasks_clean_excl_done || 0;
+          total += r.tasks_total || 0;
+        }
+        return total ? { y: clean / total, n: total } : { y: null };
+      });
+      if (points.some(p => p.y != null))
+        series.push({
+          name: means.length > 1 ? `${mdl} (μ${sm} steps)` : mdl,
+          color: colorOf(mdl), dash: sm === means[0] ? null : "6 5",
+          points,
+        });
+    }
+  lineChart(document.getElementById("chart-cleanbreadth"), ns.map(String), series, 0);
 }
 
 // ---- accuracy by event kind (dot plot) ----

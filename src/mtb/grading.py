@@ -13,6 +13,8 @@ from collections import defaultdict
 STALENESS_BUCKETS = ((0, 1), (2, 3), (4, 7), (8, 15), (16, 31), (32, 10 ** 9))
 CONTEXT_BUCKETS = ((0, 2000), (2000, 4000), (4000, 8000), (8000, 16000),
                    (16000, 32000), (32000, 10 ** 9))
+LENGTH_BUCKETS = ((2, 8, "2-8"), (9, 14, "9-14"), (15, 22, "15-22"),
+                  (23, 30, "23-30"), (31, 10 ** 9, "31+"))
 
 
 def _bucket_label(lo: int, hi: int, kilo: bool = False) -> str:
@@ -41,7 +43,9 @@ def summarize_run(run: dict) -> dict:
             "episode_id": run["episode_id"], "agent": run["agent"],
             "config": run["config"], "n_events": 0, "accuracy": None,
             "task_completion_rate": None, "mean_first_error_depth": None,
-            "task_error_dist": {}, "accuracy_by_kind": {},
+            "task_error_dist": {}, "tasks_total": 0, "tasks_clean": 0,
+            "tasks_clean_excl_done": 0, "task_length_dist": {},
+            "accuracy_by_kind": {},
             "accuracy_by_staleness": {}, "accuracy_by_context": {},
             "truncated": run.get("truncated", False),
             "error": run.get("error"),
@@ -66,15 +70,35 @@ def summarize_run(run: dict) -> dict:
             perfect_tasks += 1
             first_error_depths.append(len(recs))  # survived the whole task
 
-    # errors-per-task distribution: how many tasks get through clean
-    err_by_task: dict[str, int] = defaultdict(int)
+    # per-task tallies: raises, errors, errors excluding the DONE event
+    per_task: dict[str, list[int]] = defaultdict(lambda: [0, 0, 0])
     for r in records:
-        err_by_task.setdefault(r["task"], 0)
+        cell = per_task[r["task"]]
+        cell[0] += 1
         if not r["correct"]:
-            err_by_task[r["task"]] += 1
+            cell[1] += 1
+            if r["expected"] != "DONE":
+                cell[2] += 1
+
     task_error_dist = {"0": 0, "1": 0, "2": 0, "3+": 0}
-    for e in err_by_task.values():
+    for _, e, _x in per_task.values():
         task_error_dist[str(e) if e < 3 else "3+"] += 1
+
+    # clean-task rates and the length dependence (task length = raises,
+    # which varies within an episode around steps_mean)
+    tasks_total = len(per_task)
+    tasks_clean = sum(1 for _, e, _x in per_task.values() if e == 0)
+    tasks_clean_excl_done = sum(1 for _, _e, x in per_task.values() if x == 0)
+    task_length_dist: dict[str, dict[str, int]] = {}
+    for raises, e, x in per_task.values():
+        for lo, hi, label in LENGTH_BUCKETS:
+            if lo <= raises <= hi:
+                cell = task_length_dist.setdefault(
+                    label, {"tasks": 0, "clean": 0, "clean_x": 0})
+                cell["tasks"] += 1
+                cell["clean"] += e == 0
+                cell["clean_x"] += x == 0
+                break
 
     # accuracy by event kind: start / plain advance / branch result / done
     by_kind: dict[str, list[bool]] = defaultdict(list)
@@ -119,6 +143,10 @@ def summarize_run(run: dict) -> dict:
         "task_completion_rate": perfect_tasks / len(by_task),
         "mean_first_error_depth": sum(first_error_depths) / len(first_error_depths),
         "task_error_dist": task_error_dist,
+        "tasks_total": tasks_total,
+        "tasks_clean": tasks_clean,
+        "tasks_clean_excl_done": tasks_clean_excl_done,
+        "task_length_dist": task_length_dist,
         "accuracy_by_kind": {
             k: {"acc": sum(v) / len(v), "n": len(v)}
             for k, v in by_kind.items()
