@@ -115,7 +115,7 @@ class ChatCompletionsAgent:
                     delay = min(delay * 2, 60.0)
                     continue
                 raise RuntimeError(f"OpenRouter error: {err or body}")
-            if resp.status_code in (429, 500, 502, 503) and attempt < self.max_retries - 1:
+            if resp.status_code in (408, 429, 500, 502, 503, 504) and attempt < self.max_retries - 1:
                 time.sleep(delay)
                 delay = min(delay * 2, 60.0)
                 continue
