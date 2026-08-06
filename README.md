@@ -3,6 +3,8 @@
 A benchmark for **computational intelligence multi-tasking**: how well can a
 model keep track of many procedural tasks at the same time?
 
+**Results:** <https://dbolser.github.io/multi-task-bench/>
+
 The model is given the full instructions for N tasks up front (all within its
 context window). The tasks then advance in an interleaved order the model
 cannot predict — a step of task 3 completes, then task 1, then task 3 again,
@@ -143,8 +145,9 @@ mtb models --filter claude               # check current OpenRouter model ids
 
 ## Results site
 
-`docs/` is a static GitHub Pages site (enable Pages → deploy from branch →
-`main` / `docs`). Regenerate its data after a sweep with:
+The charts live at <https://dbolser.github.io/multi-task-bench/>, served by
+GitHub Pages from `docs/` (Settings → Pages → deploy from branch →
+`main` / `docs`). Regenerate the site data after a sweep with:
 
 ```bash
 python scripts/make_site_data.py results-hard > docs/data.js
