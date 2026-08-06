@@ -55,3 +55,11 @@ def test_linear_task_has_no_checks():
     t = generate_task("T1", "journey", random.Random(1), 15, 0.0)
     assert not t.outcomes
     assert len(t.truth_path()) == len(t.steps)
+
+
+def test_fixed_length():
+    for mean in (4, 8, 16, 32):
+        t = generate_task("T1", "pipeline", random.Random(5), mean, 0.0,
+                          steps_sd=0)
+        assert len(t.steps) == mean
+        assert len(t.truth_path()) == mean

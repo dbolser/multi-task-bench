@@ -30,6 +30,8 @@ def _episode_configs(args) -> list[dict]:
         for k in keys:
             if k not in grid:
                 sys.exit(f"grid file missing key: {k}")
+        if "steps_sd" in grid:
+            keys.append("steps_sd")
         return [
             dict(zip(keys, combo))
             for combo in itertools.product(*(grid[k] for k in keys))
@@ -38,6 +40,7 @@ def _episode_configs(args) -> list[dict]:
         "categories": args.categories.split(","),
         "n_tasks": args.n_tasks,
         "steps_mean": args.steps_mean,
+        "steps_sd": args.steps_sd,
         "branch_prob": args.branch_prob,
         "schedule": args.schedule,
         "seed": args.seed,
@@ -170,6 +173,8 @@ def main(argv: list[str] | None = None) -> None:
                    help=f"comma-separated from: {','.join(CATEGORIES)}")
     g.add_argument("--n-tasks", type=int, default=5)
     g.add_argument("--steps-mean", type=int, default=12)
+    g.add_argument("--steps-sd", type=float, default=None,
+                   help="sd of task length (default mean/4; 0 = exact length)")
     g.add_argument("--branch-prob", type=float, default=0.0)
     g.add_argument("--schedule", choices=SCHEDULES, default="uniform")
     g.add_argument("--seed", type=int, default=1)

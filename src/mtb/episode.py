@@ -137,6 +137,7 @@ def build_episode(
     schedule: str,
     seed: int,
     zipf_s: float = 1.2,
+    steps_sd: float | None = None,
 ) -> Episode:
     """Build one episode. Tasks are assigned categories round-robin from the
     given list, so a single-category list gives a within-category episode and
@@ -149,6 +150,7 @@ def build_episode(
             rng=rng,
             steps_mean=steps_mean,
             branch_prob=branch_prob,
+            steps_sd=steps_sd,
         )
         for i in range(n_tasks)
     ]
@@ -187,12 +189,14 @@ def build_episode(
             alive.remove(tid)
 
     cat_str = "+".join(sorted(set(categories)))
-    ep_id = (f"{cat_str}-n{n_tasks}-m{steps_mean}-b{int(branch_prob * 100):02d}"
+    m_str = f"mf{steps_mean}" if steps_sd == 0 else f"m{steps_mean}"
+    ep_id = (f"{cat_str}-n{n_tasks}-{m_str}-b{int(branch_prob * 100):02d}"
              f"-{schedule}-s{seed}")
     config = {
         "categories": categories,
         "n_tasks": n_tasks,
         "steps_mean": steps_mean,
+        "steps_sd": steps_sd,
         "branch_prob": branch_prob,
         "schedule": schedule,
         "seed": seed,

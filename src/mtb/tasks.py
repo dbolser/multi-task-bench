@@ -83,9 +83,14 @@ class Task:
         )
 
 
-def _draw_length(rng: random.Random, mean: int) -> int:
-    """Step count: normal around the mean with sd = mean/4, floor of 3."""
-    return max(3, round(rng.gauss(mean, mean / 4)))
+def _draw_length(rng: random.Random, mean: int, sd: float | None = None) -> int:
+    """Step count: normal around the mean (sd defaults to mean/4), floor of 3.
+    sd=0 gives exactly `mean` steps."""
+    if sd is None:
+        sd = mean / 4
+    if sd <= 0:
+        return max(3, mean)
+    return max(3, round(rng.gauss(mean, sd)))
 
 
 def generate_task(
@@ -95,11 +100,12 @@ def generate_task(
     steps_mean: int = 12,
     branch_prob: float = 0.0,
     side_len_max: int = 3,
+    steps_sd: float | None = None,
 ) -> Task:
     """Generate one task. branch_prob is the per-step chance (excluding the
     first and last two spine steps) of becoming a check step."""
     cat: Category = CATEGORIES[category_key]
-    n = _draw_length(rng, steps_mean)
+    n = _draw_length(rng, steps_mean, steps_sd)
     counter = 0
 
     def new_id() -> str:
