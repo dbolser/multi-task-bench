@@ -1,0 +1,8 @@
+{
+  "categories": [["repair", "pipeline", "assembly"]],
+  "n_tasks": [2, 3, 5],
+  "steps_mean": [32],
+  "branch_prob": [0.5, 0.8],
+  "schedule": ["uniform"],
+  "seed": [1, 2, 3]
+}
